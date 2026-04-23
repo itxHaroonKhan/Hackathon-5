@@ -8,15 +8,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
 import { 
   Settings, 
   Shield, 
   Bot, 
   Bell, 
-  Key,
-  Database,
-  Globe,
-  Save
+  Key, 
+  Database, 
+  Globe, 
+  Save 
 } from "lucide-react"
 
 export default function SettingsPage() {
@@ -157,7 +158,7 @@ export default function SettingsPage() {
               ].map((service, i) => (
                 <div key={i} className="flex items-center justify-between p-4 border rounded-xl hover:bg-secondary/20 transition-colors">
                   <div className="flex items-center gap-3">
-                    <service.icon className={cn("h-5 w-5", service.color)} />
+                    <service.icon className={service.color} size={20} />
                     <span className="font-bold">{service.name}</span>
                   </div>
                   <div className="flex items-center gap-4">
@@ -182,5 +183,5 @@ export default function SettingsPage() {
 }
 
 function Separator() {
-  return <div className="h-px bg-border w-full" />
+  return <div className="h-px bg-border w-full my-4" />
 }

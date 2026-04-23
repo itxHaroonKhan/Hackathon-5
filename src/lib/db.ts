@@ -1,55 +1,146 @@
-import { Customer, Ticket, Message, Priority, Channel, TicketStatus, Escalation } from './types';
 
-// Mock data storage in memory for the demo
-let customers: Customer[] = [
-  { id: 'cust-1', name: 'John Doe', email: 'john@example.com', phone: '+1234567890', createdAt: new Date(Date.now() - 10000000), metadata: {} },
-  { id: 'cust-2', name: 'Jane Smith', email: 'jane@smith.io', createdAt: new Date(Date.now() - 20000000), metadata: {} },
-];
+'use client';
 
-let tickets: Ticket[] = [
-  { id: 'TKT-1001', conversationId: 'conv-1', customerId: 'cust-1', sourceChannel: 'web_form', category: 'Technical', priority: 'high', status: 'open', createdAt: new Date(Date.now() - 3600000), subject: 'API Integration Failure' },
-  { id: 'TKT-1002', conversationId: 'conv-2', customerId: 'cust-2', sourceChannel: 'email', category: 'Billing', priority: 'medium', status: 'escalated', createdAt: new Date(Date.now() - 7200000), subject: 'Subscription Billing Error' },
-  { id: 'TKT-1003', conversationId: 'conv-3', customerId: 'cust-1', sourceChannel: 'whatsapp', category: 'General', priority: 'low', status: 'resolved', createdAt: new Date(Date.now() - 86400000), subject: 'Feature Inquiry' },
-];
-
-let messages: Message[] = [
-  { id: 'msg-1', conversationId: 'conv-1', channel: 'web_form', direction: 'inbound', role: 'customer', content: 'My integration with the API is failing with a 500 error.', createdAt: new Date(Date.now() - 3600000), sentiment: 'negative', sentimentScore: -0.4 },
-  { id: 'msg-2', conversationId: 'conv-2', channel: 'email', direction: 'inbound', role: 'customer', content: 'I was charged twice for this month.', createdAt: new Date(Date.now() - 7200000), sentiment: 'neutral', sentimentScore: 0 },
-  { id: 'msg-3', conversationId: 'conv-3', channel: 'whatsapp', direction: 'inbound', role: 'customer', content: 'Do you support dark mode?', createdAt: new Date(Date.now() - 86400000), sentiment: 'positive', sentimentScore: 0.6 },
-];
-
-let escalations: Escalation[] = [
-  { id: 'esc-1', ticketId: 'TKT-1002', reason: 'Customer mentions legal action', summary: 'Customer is upset about billing and mentioned "legal team".', escalatedAt: new Date(Date.now() - 7200000) }
-];
+import { 
+  collection, 
+  doc, 
+  getDoc, 
+  getDocs, 
+  setDoc, 
+  addDoc, 
+  updateDoc, 
+  query, 
+  where, 
+  orderBy, 
+  serverTimestamp,
+  Firestore
+} from 'firebase/firestore';
+import { getFirestore } from '@/firebase';
+import { Customer, Ticket, Message, TicketStatus, Escalation } from './types';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export const db = {
-  getCustomers: async () => customers,
-  getCustomerById: async (id: string) => customers.find(c => c.id === id),
-  getCustomerByEmail: async (email: string) => customers.find(c => c.email.toLowerCase() === email.toLowerCase()),
-  
-  getTickets: async () => tickets,
-  getTicketById: async (id: string) => tickets.find(t => t.id === id),
+  getCustomers: async () => {
+    const firestore = getFirestore();
+    const snapshot = await getDocs(collection(firestore, 'customers'));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+  },
+
+  getCustomerById: async (id: string) => {
+    const firestore = getFirestore();
+    const docRef = doc(firestore, 'customers', id);
+    const snap = await getDoc(docRef);
+    return snap.exists() ? { id: snap.id, ...snap.data() } as Customer : null;
+  },
+
+  getTickets: async () => {
+    const firestore = getFirestore();
+    const snapshot = await getDocs(query(collection(firestore, 'tickets'), orderBy('createdAt', 'desc')));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), createdAt: doc.data().createdAt?.toDate() || new Date() } as Ticket));
+  },
+
+  getTicketById: async (id: string) => {
+    const firestore = getFirestore();
+    const docRef = doc(firestore, 'tickets', id);
+    const snap = await getDoc(docRef);
+    return snap.exists() ? { id: snap.id, ...snap.data(), createdAt: snap.data().createdAt?.toDate() || new Date() } as Ticket : null;
+  },
+
   createTicket: async (ticket: Omit<Ticket, 'id' | 'createdAt'>) => {
-    const newTicket = { ...ticket, id: `TKT-${Math.floor(Math.random() * 10000)}`, createdAt: new Date() };
-    tickets.push(newTicket);
-    return newTicket;
+    const firestore = getFirestore();
+    const ticketsRef = collection(firestore, 'tickets');
+    const data = {
+      ...ticket,
+      createdAt: serverTimestamp()
+    };
+
+    return addDoc(ticketsRef, data)
+      .then(docRef => ({ id: docRef.id, ...ticket, createdAt: new Date() }))
+      .catch(async (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'tickets',
+          operation: 'create',
+          requestResourceData: data
+        }));
+        throw error;
+      });
   },
+
   updateTicketStatus: async (id: string, status: TicketStatus) => {
-    const t = tickets.find(t => t.id === id);
-    if (t) t.status = status;
+    const firestore = getFirestore();
+    const docRef = doc(firestore, 'tickets', id);
+    updateDoc(docRef, { status })
+      .catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: `tickets/${id}`,
+          operation: 'update',
+          requestResourceData: { status }
+        }));
+      });
   },
 
-  getMessagesByConversation: async (conversationId: string) => messages.filter(m => m.conversationId === conversationId).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()),
+  getMessagesByConversation: async (conversationId: string) => {
+    const firestore = getFirestore();
+    // In this schema, messages are subcollections of tickets
+    // For simplicity, we query across all tickets for messages matching conversationId
+    // In production, you'd likely fetch from a specific ticket
+    const q = query(collection(firestore, 'messages'), where('conversationId', '==', conversationId), orderBy('createdAt', 'asc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ 
+      id: doc.id, 
+      ...doc.data(), 
+      createdAt: doc.data().createdAt?.toDate() || new Date() 
+    } as Message));
+  },
+
   createMessage: async (msg: Omit<Message, 'id' | 'createdAt'>) => {
-    const newMsg = { ...msg, id: `msg-${Math.random().toString(36).substr(2, 9)}`, createdAt: new Date() };
-    messages.push(newMsg);
-    return newMsg;
+    const firestore = getFirestore();
+    const messagesRef = collection(firestore, 'messages');
+    const data = {
+      ...msg,
+      createdAt: serverTimestamp()
+    };
+
+    return addDoc(messagesRef, data)
+      .then(docRef => ({ id: docRef.id, ...msg, createdAt: new Date() }))
+      .catch(async (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'messages',
+          operation: 'create',
+          requestResourceData: data
+        }));
+        throw error;
+      });
   },
 
-  getEscalations: async () => escalations,
+  getEscalations: async () => {
+    const firestore = getFirestore();
+    const snapshot = await getDocs(query(collection(firestore, 'escalations'), orderBy('escalatedAt', 'desc')));
+    return snapshot.docs.map(doc => ({ 
+      id: doc.id, 
+      ...doc.data(), 
+      escalatedAt: doc.data().escalatedAt?.toDate() || new Date() 
+    } as Escalation));
+  },
+
   createEscalation: async (esc: Omit<Escalation, 'id' | 'escalatedAt'>) => {
-    const newEsc = { ...esc, id: `esc-${Math.random().toString(36).substr(2, 9)}`, escalatedAt: new Date() };
-    escalations.push(newEsc);
-    return newEsc;
+    const firestore = getFirestore();
+    const escalationsRef = collection(firestore, 'escalations');
+    const data = {
+      ...esc,
+      escalatedAt: serverTimestamp()
+    };
+
+    return addDoc(escalationsRef, data)
+      .then(docRef => ({ id: docRef.id, ...esc, escalatedAt: new Date() }))
+      .catch(async (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'escalations',
+          operation: 'create',
+          requestResourceData: data
+        }));
+        throw error;
+      });
   }
 };

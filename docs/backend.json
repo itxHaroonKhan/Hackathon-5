@@ -1,0 +1,83 @@
+
+{
+  "entities": {
+    "Customer": {
+      "title": "Customer",
+      "description": "Unified customer profile",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "metadata": { "type": "object" }
+      },
+      "required": ["name", "email", "createdAt"]
+    },
+    "Ticket": {
+      "title": "Ticket",
+      "description": "Support ticket for customer inquiries",
+      "type": "object",
+      "properties": {
+        "conversationId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "sourceChannel": { "type": "string", "enum": ["email", "whatsapp", "web_form"] },
+        "category": { "type": "string" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "status": { "type": "string", "enum": ["open", "pending", "resolved", "escalated"] },
+        "subject": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["customerId", "sourceChannel", "status", "createdAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A single message in a conversation thread",
+      "type": "object",
+      "properties": {
+        "conversationId": { "type": "string" },
+        "channel": { "type": "string", "enum": ["email", "whatsapp", "web_form"] },
+        "direction": { "type": "string", "enum": ["inbound", "outbound"] },
+        "role": { "type": "string", "enum": ["customer", "agent", "system"] },
+        "content": { "type": "string" },
+        "sentiment": { "type": "string", "enum": ["positive", "neutral", "negative"] },
+        "sentimentScore": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["conversationId", "role", "content", "createdAt"]
+    },
+    "Escalation": {
+      "title": "Escalation",
+      "description": "AI-triggered escalation for human review",
+      "type": "object",
+      "properties": {
+        "ticketId": { "type": "string" },
+        "reason": { "type": "string" },
+        "summary": { "type": "string" },
+        "escalatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ticketId", "reason", "escalatedAt"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "/customers/{customerId}": {
+      "schema": "#/entities/Customer",
+      "description": "Customer profiles"
+    },
+    "/tickets/{ticketId}": {
+      "schema": "#/entities/Ticket",
+      "description": "Support tickets"
+    },
+    "/tickets/{ticketId}/messages/{messageId}": {
+      "schema": "#/entities/Message",
+      "description": "Messages within a ticket's conversation"
+    },
+    "/escalations/{escalationId}": {
+      "schema": "#/entities/Escalation",
+      "description": "High-priority escalations"
+    }
+  }
+}

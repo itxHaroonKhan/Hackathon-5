@@ -34,10 +34,16 @@ export const useFirebase = () => {
   return context;
 };
 
+/**
+ * React hooks for use inside components.
+ */
 export const useFirebaseApp = () => useFirebase().firebaseApp;
 export const useFirestore = () => useFirebase().firestore;
 export const useAuth = () => useFirebase().auth;
 
+/**
+ * Legacy aliases for hooks (must only be used in components).
+ */
 export const getFirebaseApp = () => useFirebase().firebaseApp;
 export const getFirestore = () => useFirebase().firestore;
 export const getAuth = () => useFirebase().auth;

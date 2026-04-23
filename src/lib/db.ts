@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -15,40 +14,40 @@ import {
   serverTimestamp,
   Firestore
 } from 'firebase/firestore';
-import { getFirestore } from '@/firebase';
+import { getFirestoreInstance } from '@/firebase';
 import { Customer, Ticket, Message, TicketStatus, Escalation } from './types';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export const db = {
   getCustomers: async () => {
-    const firestore = getFirestore();
+    const firestore = getFirestoreInstance();
     const snapshot = await getDocs(collection(firestore, 'customers'));
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
   },
 
   getCustomerById: async (id: string) => {
-    const firestore = getFirestore();
+    const firestore = getFirestoreInstance();
     const docRef = doc(firestore, 'customers', id);
     const snap = await getDoc(docRef);
     return snap.exists() ? { id: snap.id, ...snap.data() } as Customer : null;
   },
 
   getTickets: async () => {
-    const firestore = getFirestore();
+    const firestore = getFirestoreInstance();
     const snapshot = await getDocs(query(collection(firestore, 'tickets'), orderBy('createdAt', 'desc')));
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), createdAt: doc.data().createdAt?.toDate() || new Date() } as Ticket));
   },
 
   getTicketById: async (id: string) => {
-    const firestore = getFirestore();
+    const firestore = getFirestoreInstance();
     const docRef = doc(firestore, 'tickets', id);
     const snap = await getDoc(docRef);
     return snap.exists() ? { id: snap.id, ...snap.data(), createdAt: snap.data().createdAt?.toDate() || new Date() } as Ticket : null;
   },
 
   createTicket: async (ticket: Omit<Ticket, 'id' | 'createdAt'>) => {
-    const firestore = getFirestore();
+    const firestore = getFirestoreInstance();
     const ticketsRef = collection(firestore, 'tickets');
     const data = {
       ...ticket,
@@ -68,7 +67,7 @@ export const db = {
   },
 
   updateTicketStatus: async (id: string, status: TicketStatus) => {
-    const firestore = getFirestore();
+    const firestore = getFirestoreInstance();
     const docRef = doc(firestore, 'tickets', id);
     updateDoc(docRef, { status })
       .catch(async () => {
@@ -81,10 +80,7 @@ export const db = {
   },
 
   getMessagesByConversation: async (conversationId: string) => {
-    const firestore = getFirestore();
-    // In this schema, messages are subcollections of tickets
-    // For simplicity, we query across all tickets for messages matching conversationId
-    // In production, you'd likely fetch from a specific ticket
+    const firestore = getFirestoreInstance();
     const q = query(collection(firestore, 'messages'), where('conversationId', '==', conversationId), orderBy('createdAt', 'asc'));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ 
@@ -95,7 +91,7 @@ export const db = {
   },
 
   createMessage: async (msg: Omit<Message, 'id' | 'createdAt'>) => {
-    const firestore = getFirestore();
+    const firestore = getFirestoreInstance();
     const messagesRef = collection(firestore, 'messages');
     const data = {
       ...msg,
@@ -115,7 +111,7 @@ export const db = {
   },
 
   getEscalations: async () => {
-    const firestore = getFirestore();
+    const firestore = getFirestoreInstance();
     const snapshot = await getDocs(query(collection(firestore, 'escalations'), orderBy('escalatedAt', 'desc')));
     return snapshot.docs.map(doc => ({ 
       id: doc.id, 
@@ -125,7 +121,7 @@ export const db = {
   },
 
   createEscalation: async (esc: Omit<Escalation, 'id' | 'escalatedAt'>) => {
-    const firestore = getFirestore();
+    const firestore = getFirestoreInstance();
     const escalationsRef = collection(firestore, 'escalations');
     const data = {
       ...esc,

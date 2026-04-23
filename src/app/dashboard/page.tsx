@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -11,6 +12,7 @@ import {
   Clock,
   CheckCircle2
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { 
   BarChart, 
   Bar, 
@@ -217,8 +219,4 @@ export default function DashboardOverview() {
       </div>
     </div>
   )
-}
-
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(' ');
 }

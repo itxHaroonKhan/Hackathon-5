@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -7,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 import { 
   Search, 
   Mail, 
@@ -30,7 +32,6 @@ export default function CustomersPage() {
 
   async function handleSelectCustomer(customer: Customer) {
     setSelectedCustomer(customer)
-    // In a real app, conversationId would be linked to active ticket
     const msgs = await db.getMessagesByConversation('conv-1')
     setMessages(msgs)
   }
@@ -50,7 +51,6 @@ export default function CustomersPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Customer Directory */}
         <Card className="lg:col-span-4 border-none shadow-xl">
           <CardHeader className="p-6">
             <div className="relative">
@@ -89,7 +89,6 @@ export default function CustomersPage() {
           </CardContent>
         </Card>
 
-        {/* Customer Detail View */}
         <div className="lg:col-span-8">
           {selectedCustomer ? (
             <div className="space-y-6">
@@ -157,7 +156,6 @@ export default function CustomersPage() {
                 </CardContent>
               </Card>
 
-              {/* Conversation History Preview */}
               <Card className="border-none shadow-xl">
                 <CardHeader className="border-b p-6">
                   <CardTitle className="flex items-center gap-2 font-headline">
@@ -202,8 +200,4 @@ export default function CustomersPage() {
       </div>
     </div>
   )
-}
-
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(' ');
 }

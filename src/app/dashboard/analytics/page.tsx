@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -19,6 +20,7 @@ import {
   Area
 } from "recharts"
 import { Brain, Heart, Clock, Zap, Target, TrendingUp } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 const sentimentData = [
   { name: 'Positive', value: 65, color: '#22c55e' },
@@ -152,8 +154,4 @@ export default function AnalyticsPage() {
       </div>
     </div>
   )
-}
-
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(' ');
 }
